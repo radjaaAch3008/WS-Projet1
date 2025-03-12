@@ -46,7 +46,9 @@ public class Mavenproject111 {
         return stmt.executeQuery("SELECT * FROM " + tableName);
     }
 
-    public void AjoutAuteur(int idAuteur, String nom) {
+   
+    
+   public void AjoutAuteur(int idAuteur, String nom) {
         if (connection == null) {
             throw new IllegalStateException("Pas de connexion à la base de données");
         }
@@ -69,25 +71,25 @@ public class Mavenproject111 {
         pstmt.setInt(2, idAuteur);
         pstmt.executeUpdate();
     }
-    // Method to add an editor if it doesn't exist
-    public void AjoutEditeur(String nomEditeur) throws SQLException {
+    // Modified AjoutEditeur to include address and phone
+    public void AjoutEditeur(String nomEditeur, String adresse, String telephone) throws SQLException {
         if (!isConnected()) {
             throw new IllegalStateException("Pas de connexion à la base de données");
         }
         try {
-            // Check if editor exists
             String checkQuery = "SELECT COUNT(*) FROM Editeur WHERE Nom_Editeur = ?";
             PreparedStatement checkStmt = connection.prepareStatement(checkQuery);
-            checkStmt.setString(1, nomEditeur.trim()); // Trim to avoid whitespace issues
+            checkStmt.setString(1, nomEditeur.trim());
             ResultSet rs = checkStmt.executeQuery();
             rs.next();
             int count = rs.getInt(1);
-            System.out.println("Nombre d'éditeurs trouvés avec Nom_Editeur '" + nomEditeur + "': " + count);
 
-            if (count == 0) { // Editor doesn't exist
-                String insertQuery = "INSERT INTO Editeur (Nom_Editeur) VALUES (?)";
+            if (count == 0) {
+                String insertQuery = "INSERT INTO Editeur (Nom_Editeur, Adresse, Telephone) VALUES (?, ?, ?)";
                 PreparedStatement insertStmt = connection.prepareStatement(insertQuery);
                 insertStmt.setString(1, nomEditeur.trim());
+                insertStmt.setString(2, adresse.trim());
+                insertStmt.setString(3, telephone.trim());
                 int rowsAffected = insertStmt.executeUpdate();
                 System.out.println("Éditeur ajouté avec succès: " + nomEditeur + " (" + rowsAffected + " ligne(s) affectée(s))");
             } else {
@@ -95,7 +97,25 @@ public class Mavenproject111 {
             }
         } catch (SQLException e) {
             System.err.println("Erreur lors de l'ajout de l'éditeur: " + e.getMessage());
-            throw e; // Re-throw to be caught by the caller
+            throw e;
+        }
+    }
+
+    // New method to modify editor details
+    public void ModifEditeur(String nomEditeur, String adresse, String telephone) throws SQLException {
+        if (!isConnected()) {
+            throw new IllegalStateException("Pas de connexion à la base de données");
+        }
+        String query = "UPDATE Editeur SET Adresse = ?, Telephone = ? WHERE Nom_Editeur = ?";
+        PreparedStatement pstmt = connection.prepareStatement(query);
+        pstmt.setString(1, adresse.trim());
+        pstmt.setString(2, telephone.trim());
+        pstmt.setString(3, nomEditeur.trim());
+        int rowsAffected = pstmt.executeUpdate();
+        if (rowsAffected > 0) {
+            System.out.println("Éditeur modifié avec succès");
+        } else {
+            System.out.println("Aucun éditeur trouvé avec ce nom");
         }
     }
     
@@ -104,14 +124,12 @@ public class Mavenproject111 {
         if (!isConnected()) {
             throw new IllegalStateException("Pas de connexion à la base de données");
         }
-        // Ensure the editor exists before adding the book
-        AjoutEditeur(nomEditeur);
-        
+        AjoutEditeur(nomEditeur, "", ""); // Add empty address and phone if editor doesn't exist
         String query = "INSERT INTO Livre (Id_Livre, Titre, Nom_Editeur, Nbr_exemplaires) VALUES (?, ?, ?, ?)";
         PreparedStatement pstmt = connection.prepareStatement(query);
         pstmt.setInt(1, idLivre);
         pstmt.setString(2, titre);
-        pstmt.setString(3, nomEditeur.trim()); // Trim to match the editor added
+        pstmt.setString(3, nomEditeur.trim());
         pstmt.setInt(4, nbrExemplaires);
         pstmt.executeUpdate();
         System.out.println("Livre ajouté avec succès: " + titre);
@@ -121,9 +139,7 @@ public class Mavenproject111 {
         if (!isConnected()) {
             throw new IllegalStateException("Pas de connexion à la base de données");
         }
-        // Ensure the editor exists before modifying the book
-        AjoutEditeur(nomEditeur);
-        
+        AjoutEditeur(nomEditeur, "", ""); // Add empty address and phone if editor doesn't exist
         String query = "UPDATE Livre SET Titre = ?, Nom_Editeur = ?, Nbr_exemplaires = ? WHERE Id_Livre = ?";
         PreparedStatement pstmt = connection.prepareStatement(query);
         pstmt.setString(1, titre);
@@ -132,6 +148,18 @@ public class Mavenproject111 {
         pstmt.setInt(4, idLivre);
         pstmt.executeUpdate();
         System.out.println("Livre modifié avec succès: " + titre);
+    }
+    
+    public void AjoutEcrit(int idLivre, int idAuteur) throws SQLException {
+        if (!isConnected()) {
+            throw new IllegalStateException("Pas de connexion à la base de données");
+        }
+        String query = "INSERT INTO Ecrit (ID_Livre, ID_Auteur) VALUES (?, ?)";
+        PreparedStatement pstmt = connection.prepareStatement(query);
+        pstmt.setInt(1, idLivre);
+        pstmt.setInt(2, idAuteur);
+        pstmt.executeUpdate();
+        System.out.println("Relation Ecrit ajoutée avec succès");
     }
 
     public String AfficheAuteurs(int idLivre) {
@@ -212,6 +240,52 @@ public class Mavenproject111 {
         }
         return result.toString();
     }
+    
+    // New delete methods
+    public void SupprimeAuteur(int idAuteur) throws SQLException {
+        if (!isConnected()) {
+            throw new IllegalStateException("Pas de connexion à la base de données");
+        }
+        String query = "DELETE FROM Auteur WHERE ID_Auteur = ?";
+        PreparedStatement pstmt = connection.prepareStatement(query);
+        pstmt.setInt(1, idAuteur);
+        int rowsAffected = pstmt.executeUpdate();
+        if (rowsAffected > 0) {
+            System.out.println("Auteur supprimé avec succès");
+        } else {
+            System.out.println("Aucun auteur trouvé avec cet ID");
+        }
+    }
+
+    public void SupprimeLivre(int idLivre) throws SQLException {
+        if (!isConnected()) {
+            throw new IllegalStateException("Pas de connexion à la base de données");
+        }
+        String query = "DELETE FROM Livre WHERE Id_Livre = ?";
+        PreparedStatement pstmt = connection.prepareStatement(query);
+        pstmt.setInt(1, idLivre);
+        int rowsAffected = pstmt.executeUpdate();
+        if (rowsAffected > 0) {
+            System.out.println("Livre supprimé avec succès");
+        } else {
+            System.out.println("Aucun livre trouvé avec cet ID");
+        }
+    }
+
+    public void SupprimeEditeur(String nomEditeur) throws SQLException {
+        if (!isConnected()) {
+            throw new IllegalStateException("Pas de connexion à la base de données");
+        }
+        String query = "DELETE FROM Editeur WHERE Nom_Editeur = ?";
+        PreparedStatement pstmt = connection.prepareStatement(query);
+        pstmt.setString(1, nomEditeur.trim());
+        int rowsAffected = pstmt.executeUpdate();
+        if (rowsAffected > 0) {
+            System.out.println("Éditeur supprimé avec succès");
+        } else {
+            System.out.println("Aucun éditeur trouvé avec ce nom");
+        }
+    }
 
     public static void main(String[] args) {
         new GestionLivresGUI();
@@ -220,10 +294,11 @@ public class Mavenproject111 {
 
 class GestionLivresGUI {
     private Mavenproject111 gestion;
-    private JTextField idAuteurField, nomAuteurField, idLivreField, titreField, nomEditeurField, nbrExemplairesField;
+    private JTextField idAuteurField, nomAuteurField, idLivreField, titreField, nomEditeurField, 
+                       nbrExemplairesField, adresseField, telephoneField;
     private JTextArea outputArea;
-    private JTable auteurTable, livreTable;
-    private DefaultTableModel auteurModel, livreModel;
+    private JTable auteurTable, livreTable, editeurTable, ecritTable;
+    private DefaultTableModel auteurModel, livreModel, editeurModel, ecritModel;
     private JScrollPane outputScrollPane;
 
     public GestionLivresGUI() {
@@ -245,17 +320,23 @@ class GestionLivresGUI {
         // Create table models
         auteurModel = new DefaultTableModel(new String[]{"ID_Auteur", "Nom"}, 0);
         livreModel = new DefaultTableModel(new String[]{"Id_Livre", "Titre", "Nom_Editeur", "Nbr_exemplaires"}, 0);
+        editeurModel = new DefaultTableModel(new String[]{"Nom_Editeur", "Adresse", "Telephone"}, 0);
+        ecritModel = new DefaultTableModel(new String[]{"ID_Livre", "ID_Auteur"}, 0);
         
         // Create tables
         auteurTable = new JTable(auteurModel);
         livreTable = new JTable(livreModel);
+        editeurTable = new JTable(editeurModel);
+        ecritTable = new JTable(ecritModel);
         
         // Create scroll panes for tables
         JScrollPane auteurScrollPane = new JScrollPane(auteurTable);
         JScrollPane livreScrollPane = new JScrollPane(livreTable);
+        JScrollPane editeurScrollPane = new JScrollPane(editeurTable);
+        JScrollPane ecritScrollPane = new JScrollPane(ecritTable);
 
         JPanel inputPanel = new JPanel();
-        inputPanel.setLayout(new GridLayout(9, 2)); // Increased to 9 rows to accommodate new button
+        inputPanel.setLayout(new GridLayout(14, 2)); // Increased to 12 rows for 3 new buttons
 
         idAuteurField = new JTextField();
         nomAuteurField = new JTextField();
@@ -263,18 +344,28 @@ class GestionLivresGUI {
         titreField = new JTextField();
         nomEditeurField = new JTextField();
         nbrExemplairesField = new JTextField();
+        adresseField = new JTextField();      // New address field
+        telephoneField = new JTextField();    // New phone field
         outputArea = new JTextArea();
         outputArea.setEditable(false);
         outputScrollPane = new JScrollPane(outputArea);
-        JButton showBooksByEditorButton = new JButton("Afficher livres par Editeur"); // New button
         
         JButton addAuteurButton = new JButton("Ajouter Auteur");
         JButton modifAuteurButton = new JButton("Modifier Auteur");
         JButton addLivreButton = new JButton("Ajouter Livre");
         JButton modifLivreButton = new JButton("Modifier Livre");
+        JButton addEditeurButton = new JButton("Ajouter Editeur");// New button
+        JButton modifEditeurButton = new JButton("Modifier Editeur");// New button
         JButton refreshButton = new JButton("Rafraîchir Tables");
-        JButton showBooksByAuthorButton = new JButton("Afficher livres par Auteurs"); // New button
+        JButton showBooksByAuthorButton = new JButton("Afficher livres par Auteurs");
+        JButton showBooksByEditorButton = new JButton("Afficher livres par Editeur");
+       
 
+        // New delete buttons
+        JButton deleteAuteurButton = new JButton("Supprimer Auteur");
+        JButton deleteLivreButton = new JButton("Supprimer Livre");
+        JButton deleteEditeurButton = new JButton("Supprimer Editeur");
+        
         inputPanel.add(new JLabel("ID Auteur:"));
         inputPanel.add(idAuteurField);
         inputPanel.add(new JLabel("Nom Auteur:"));
@@ -287,27 +378,43 @@ class GestionLivresGUI {
         inputPanel.add(nomEditeurField);
         inputPanel.add(new JLabel("Nombre Exemplaires:"));
         inputPanel.add(nbrExemplairesField);
+        inputPanel.add(new JLabel("Adresse Éditeur:"));
+        inputPanel.add(adresseField);
+        inputPanel.add(new JLabel("Téléphone Éditeur:"));
+        inputPanel.add(telephoneField);
         inputPanel.add(addAuteurButton);
         inputPanel.add(modifAuteurButton);
         inputPanel.add(addLivreButton);
         inputPanel.add(modifLivreButton);
+        inputPanel.add(addEditeurButton);
+        inputPanel.add(modifEditeurButton);
         inputPanel.add(refreshButton);
-        inputPanel.add(showBooksByAuthorButton); // Added new button
-        inputPanel.add(showBooksByEditorButton); // Added new button
+        inputPanel.add(showBooksByAuthorButton);
+        inputPanel.add(showBooksByEditorButton);
+        inputPanel.add(deleteAuteurButton);
+        inputPanel.add(deleteLivreButton);
+        inputPanel.add(deleteEditeurButton);
 
-        // Split pane for tables
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, 
+        // Create nested split panes for four tables
+        JSplitPane topSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, 
             auteurScrollPane, livreScrollPane);
-        splitPane.setDividerLocation(400);
+        JSplitPane bottomSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, 
+            editeurScrollPane, ecritScrollPane);
+        JSplitPane mainSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, 
+            topSplitPane, bottomSplitPane);
+        
+        topSplitPane.setDividerLocation(400);
+        bottomSplitPane.setDividerLocation(400);
+        mainSplitPane.setDividerLocation(300);
 
         frame.add(inputPanel, BorderLayout.NORTH);
-        frame.add(splitPane, BorderLayout.CENTER);
+        frame.add(mainSplitPane, BorderLayout.CENTER);
         frame.add(outputScrollPane, BorderLayout.SOUTH);
 
         // Method to refresh tables
         refreshTables();
 
-        // Action Listeners with table refresh
+       // Action Listeners with table refresh
         addAuteurButton.addActionListener(e -> {
             try {
                 if (!gestion.isConnected()) {
@@ -344,6 +451,9 @@ class GestionLivresGUI {
             }
         });
 
+      //outputArea.setText("Erreur: Le nombre d'exemplaires ne peut pas être négatif");
+
+
         // Action Listener for Ajouter Livre
         addLivreButton.addActionListener(e -> {
             try {
@@ -379,7 +489,7 @@ class GestionLivresGUI {
                 ex.printStackTrace();
             }
         });
-
+        
         // Action Listener for Modifier Livre
         modifLivreButton.addActionListener(e -> {
             try {
@@ -411,6 +521,59 @@ class GestionLivresGUI {
                 ex.printStackTrace();
             }
         });
+        // New Action Listener for Ajouter Editeur
+        addEditeurButton.addActionListener(e -> {
+            try {
+                if (!gestion.isConnected()) {
+                    outputArea.setText("Erreur: Pas de connexion à la base de données");
+                    return;
+                }
+                String nomEditeur = nomEditeurField.getText().trim();
+                String adresse = adresseField.getText().trim();
+                String telephone = telephoneField.getText().trim();
+
+                if (nomEditeur.isEmpty()) {
+                    outputArea.setText("Erreur: Le nom de l'éditeur ne peut pas être vide");
+                    return;
+                }
+
+                gestion.AjoutEditeur(nomEditeur, adresse, telephone);
+                outputArea.setText("Éditeur ajouté avec succès: " + nomEditeur);
+                nomEditeurField.setText("");
+                adresseField.setText("");
+                telephoneField.setText("");
+                refreshTables();
+            } catch (SQLException ex) {
+                outputArea.setText("Erreur SQL: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+
+        // New Action Listener for Modifier Editeur
+        modifEditeurButton.addActionListener(e -> {
+            try {
+                if (!gestion.isConnected()) {
+                    outputArea.setText("Erreur: Pas de connexion à la base de données");
+                    return;
+                }
+                String nomEditeur = nomEditeurField.getText().trim();
+                String adresse = adresseField.getText().trim();
+                String telephone = telephoneField.getText().trim();
+
+                if (nomEditeur.isEmpty()) {
+                    outputArea.setText("Erreur: Le nom de l'éditeur ne peut pas être vide");
+                    return;
+                }
+
+                gestion.ModifEditeur(nomEditeur, adresse, telephone);
+                outputArea.setText("Éditeur modifié avec succès: " + nomEditeur);
+                refreshTables();
+            } catch (SQLException ex) {
+                outputArea.setText("Erreur SQL: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+        
         // New Action Listener for Afficher livres par Auteurs
         showBooksByAuthorButton.addActionListener(e -> {
             try {
@@ -432,6 +595,7 @@ class GestionLivresGUI {
                 ex.printStackTrace();
             }
         });
+        
         // New Action Listener for Afficher livres par Editeur
         showBooksByEditorButton.addActionListener(e -> {
             try {
@@ -450,6 +614,72 @@ class GestionLivresGUI {
                 outputArea.setText(result);
             } catch (Exception ex) {
                 outputArea.setText("Erreur: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+       // New Action Listeners for delete buttons
+        deleteAuteurButton.addActionListener(e -> {
+            try {
+                if (!gestion.isConnected()) {
+                    outputArea.setText("Erreur: Pas de connexion à la base de données");
+                    return;
+                }
+                String idAuteurText = idAuteurField.getText().trim();
+                if (idAuteurText.isEmpty()) {
+                    outputArea.setText("Erreur: Veuillez entrer l'ID de l'auteur à supprimer");
+                    return;
+                }
+                int idAuteur = Integer.parseInt(idAuteurText);
+                gestion.SupprimeAuteur(idAuteur);
+                outputArea.setText("Auteur supprimé avec succès");
+                refreshTables();
+            } catch (NumberFormatException ex) {
+                outputArea.setText("Erreur: L'ID auteur doit être un nombre valide");
+            } catch (SQLException ex) {
+                outputArea.setText("Erreur SQL: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+
+        deleteLivreButton.addActionListener(e -> {
+            try {
+                if (!gestion.isConnected()) {
+                    outputArea.setText("Erreur: Pas de connexion à la base de données");
+                    return;
+                }
+                String idLivreText = idLivreField.getText().trim();
+                if (idLivreText.isEmpty()) {
+                    outputArea.setText("Erreur: Veuillez entrer l'ID du livre à supprimer");
+                    return;
+                }
+                int idLivre = Integer.parseInt(idLivreText);
+                gestion.SupprimeLivre(idLivre);
+                outputArea.setText("Livre supprimé avec succès");
+                refreshTables();
+            } catch (NumberFormatException ex) {
+                outputArea.setText("Erreur: L'ID livre doit être un nombre valide");
+            } catch (SQLException ex) {
+                outputArea.setText("Erreur SQL: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+
+        deleteEditeurButton.addActionListener(e -> {
+            try {
+                if (!gestion.isConnected()) {
+                    outputArea.setText("Erreur: Pas de connexion à la base de données");
+                    return;
+                }
+                String nomEditeur = nomEditeurField.getText().trim();
+                if (nomEditeur.isEmpty()) {
+                    outputArea.setText("Erreur: Veuillez entrer le nom de l'éditeur à supprimer");
+                    return;
+                }
+                gestion.SupprimeEditeur(nomEditeur);
+                outputArea.setText("Éditeur supprimé avec succès");
+                refreshTables();
+            } catch (SQLException ex) {
+                outputArea.setText("Erreur SQL: " + ex.getMessage());
                 ex.printStackTrace();
             }
         });
@@ -480,6 +710,27 @@ class GestionLivresGUI {
                     rsLivre.getInt("Nbr_exemplaires")
                 });
             }
+
+            // Updated to include Adresse and Telephone
+            ResultSet rsEditeur = gestion.getTableData("Editeur");
+            editeurModel.setRowCount(0);
+            while (rsEditeur.next()) {
+                editeurModel.addRow(new Object[]{
+                    rsEditeur.getString("Nom_Editeur"),
+                    rsEditeur.getString("Adresse"),
+                    rsEditeur.getString("Telephone")
+                });
+            }
+
+            ResultSet rsEcrit = gestion.getTableData("Ecrit");
+            ecritModel.setRowCount(0);
+            while (rsEcrit.next()) {
+                ecritModel.addRow(new Object[]{
+                    rsEcrit.getInt("ID_Livre"),
+                    rsEcrit.getInt("ID_Auteur")
+                });
+            }
+
         } catch (SQLException e) {
             outputArea.setText("Erreur lors du rafraîchissement des tables: " + e.getMessage());
             e.printStackTrace();
